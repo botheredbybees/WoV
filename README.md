@@ -69,7 +69,7 @@ The system is designed to support:
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/YOUR_ORG/nuyina-wildlife-observation.git
+git clone https://github.com/botheredbybees/WoV.git
 cd nuyina-wildlife-observation
 ```
 
