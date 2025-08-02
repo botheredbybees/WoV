@@ -1,5 +1,6 @@
-supabase
-psycopg[binary]
+flask
 Pillow
-exifread
+psycopg[binary]
+supabase
 requests
+exifread
