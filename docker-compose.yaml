@@ -107,6 +107,28 @@ services:
       - ./backend/fastapi:/app
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
+  exif-batcher:
+    container_name: wov-exif-batcher
+    build:
+      context: ./backend/exif-batcher
+    restart: unless-stopped
+    environment:
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_KEY: ${SERVICE_ROLE_KEY}
+      SUPABASE_BUCKET: photo-uploads
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: supabase_admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      - db
+      - storage
+    volumes:
+      - ./volumes/storage:/batcher/photos:z
+    # The batcher can poll or listen via webhook. For polling loop:
+    command: python /code/main.py
+
 
 volumes:
   db-config:
