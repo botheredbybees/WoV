@@ -3,13 +3,17 @@
 ### 1. Observation Workflow
 
 - **Log an Observation**
-  - Simple “New Observation” form: Species, number observed, behavior, notes, distance/bearing from ship, GPS, observer
-  - Photo attachment: from device camera or upload
+  - “New Observation” form: Species, number, behavior, notes, distance/bearing, GPS, observer
+  - Attach photo(s): from device camera, upload, SD card, or file drop
 
 - **Automated Context Injection**
-  - Retrieve contextual parameters (location, weather, sensor data) at time of observation via API (Supabase REST/JS)
-  - For photo uploads, **extract EXIF datetime and location and match with nearest sensor/environmental data**
-  - **EXIF/Context batcher:** A containerized Python service (`exif-batcher`) receives upload events (via Supabase Storage webhooks routed through Kong). It fetches new images, extracts EXIF metadata, performs sensor-data matching (via PostgREST or direct DB), and updates observations — supporting both real-time and post-hoc bulk workflows.
+  - **EXIF/Context batcher service processes every new image,** live or bulk, by default. Every file upload triggers the batcher via webhook (Supabase Storage via Kong). The batcher:
+    1. Downloads the image
+    2. Extracts EXIF metadata (datetime, GPS, etc.)
+    3. Looks up nearest matching sensor/environment data
+    4. Updates/annotates the associated observation in the database (or staging table)
+    5. Records processing status or flags for review if EXIF/context fails/missing
+
 
 - **Community View**
   - Voyage/daily summary dashboard, rare sightings, verification, and engagement boards
