@@ -7,9 +7,9 @@
   - Photo attachment: from device camera or upload
 
 - **Automated Context Injection**
-  - Retrieve contextual parameters (location, weather, sensor data) at time of observation via API
+  - Retrieve contextual parameters (location, weather, sensor data) at time of observation via API (Supabase REST/JS)
   - For photo uploads, **extract EXIF datetime and location and match with nearest sensor/environmental data**
-  - **EXIF/Context batcher**: For bulk or delayed photo uploads, a Dockerized Python service processes new images as they arrive using webhooks or polling. It extracts EXIF data, matches by timestamp to underway sensor data, and updates the observations table. Handles both live and offline/batch operation on the ship.
+  - **EXIF/Context batcher:** A containerized Python service (`exif-batcher`) receives upload events (via Supabase Storage webhooks routed through Kong). It fetches new images, extracts EXIF metadata, performs sensor-data matching (via PostgREST or direct DB), and updates observations — supporting both real-time and post-hoc bulk workflows.
 
 - **Community View**
   - Voyage/daily summary dashboard, rare sightings, verification, and engagement boards
@@ -19,52 +19,80 @@
   - (Optional): Local ML engine for automatic species suggestion
 
 - **Data Management**
-  - Observations, photos, and context in PostgreSQL via Supabase
-  - Automated and manual export utilities for iNaturalist/ALA/eBird
-  - Admin interface for voyage/species/admin operations
-
-### 2. Technical Stack
-
-- **Frontend:** SvelteKit (or Vue, etc.) — talks directly to Supabase/PostgREST, uses Supabase Auth for login
-- **Backend:** All CRUD and user management via Supabase (no Python backend required for standard API)
-- **Database:** Supabase PostgreSQL
-- **Integration:** 
-  - API client for ship sensor data
-  - **Docker Python “exif-batcher” service** for post-processing and context lookup
-  - Scripts/services for batch handling
-- **Optional:** Local microservice for AI/ML on images
-
-### 3. User Roles
-
-- **General User (Crew/Scientist):** Log observations, upload/view photos, access summary dashboards/species lists
-- **Admin/Lead Scientist:** Review/verify data, export datasets, manage voyage/species dictionaries
-
-### 4. Data Flow
-
-1. **Observation Entry:** Data and image upload via web/UI
-2. **Context Fetch:** 
-    - **Live:** JS fetches underway/sensor data for instant match
-    - **Bulk:** EXIF/Context batcher Python service triggered on upload; updates DB with timestamp and context
-3. **Local Storage:** All data integrated in on-ship PostgreSQL
-4. **Community Display:** Aggregated visualizations for use onboard
-5. **Export:** Batch/scheduled export for ALA, iNat, and eBird integration
-
-### 5. EXIF/Context Docker Batcher
-
-- **Service:** `exif-batcher` (Python)
-- **Trigger:** Supabase Webhook on file upload or periodic poll of Storage
-- **Process:**
-    1. Download new image
-    2. Extract EXIF datetime/location
-    3. Look up nearest underway/sensor context by time
-    4. Update relevant row(s) in observations DB
-    5. Mark file as processed or move to archive folder
-
-- **Advantages:**
-    - Fits offline/workgroup Docker deployment
-    - Resilient to network dropouts and bulk workflows
-    - Modular & independently updateable
+  - Observations, photos, and context stored in Postgres via Supabase
+  - Batched, scheduled, and on-demand export for iNaturalist, ALA, and eBird (views + PostgREST)
+  - Admin interface for voyage/species/reference data
 
 ---
 
-*This design modernizes the stack, enabling low-friction data entry and robust sync to shipboard science workflows without maintaining unnecessary backend code!*
+### 2. Technical Stack
+
+- **Frontend:** SvelteKit (or Vue, etc.)
+  - Connects directly to **Supabase REST API** endpoints (via PostgREST)
+  - Uses **Supabase Auth** (GoTrue) via Kong for seamless login/roles
+  - Handles most CRUD via auto-generated API
+
+- **Supabase Core Services:**
+  - **supabase-db:** Local PostgreSQL data with full schema
+  - **supabase-kong:** API gateway for REST, Storage, and Auth
+  - **supabase-rest:** PostgREST for auto CRUD/view endpoints
+  - **supabase-auth:** GoTrue Auth (Sign-up, login, roles/JWT)
+  - **supabase-storage:** Native file/photo upload and management (with webhook support)
+  - **supabase-imgproxy:** Fast, compatible image resizing and preview
+
+- **Docker Python `exif-batcher` service:**
+  - Receives photo-upload events via webhook (from Supabase Storage through Kong)
+  - Downloads images from Supabase Storage bucket
+  - Extracts EXIF data (timestamp, GPS) and finds nearest matching sensor/environmental data (from underway table or API)
+  - Updates relevant observations in DB (direct or via REST API)
+  - Moves/marks files as processed after completion
+
+- **(Optional:) FastAPI (or other backend)**:
+  - Can be included for advanced custom logic but not required for normal CRUD and file workflows
+
+- **Offline/Resilience:** All components run in Docker Compose; supports full operation without internet while at sea.
+
+---
+
+### 3. User Roles
+
+- **General User (Crew/Scientist):** Log observations, upload and review photos, filter voyage/species data, see summary stats
+- **Admin/Lead Scientist:** Approve/verify/curate records, manage taxon/voyage lists, export data, keep system healthy
+
+---
+
+### 4. Data Flow
+
+1. **Observation Entry:** Users enter records and upload images through web/mobile app (SvelteKit).
+2. **Photo Storage:** Uploaded images stored in Supabase Storage (file bucket).
+3. **EXIF/Event Processing:** On upload, Supabase Storage triggers a webhook via Kong to the `exif-batcher` Python service, which extracts and annotates EXIF/context metadata.
+4. **Context Fetch:**
+    - **Live:** JS fetches underway/sensor data for direct injection
+    - **Bulk:** `exif-batcher` service updates DB with EXIF info and nearest context automatically
+5. **Database:** All info kept in on-ship PostgreSQL (via Supabase stack)
+6. **Community Display:** Visual summaries and aggregation on web/dashboard for voyage engagement, QA, and science
+7. **Export:** Export tools/tables/views enable direct ALA, iNaturalist, or eBird submission from local stack
+
+---
+
+### 5. Docker Python EXIF/Context Batcher
+
+- **Service:** `exif-batcher` (Python)
+- **Trigger:** Supabase Storage webhook routed via Kong on file upload, or optional poll of the bucket
+- **Process:**
+    1. Receives event (upload info)
+    2. Downloads image from Storage
+    3. Reads EXIF fields (datetime, GPS, camera, etc.)
+    4. Looks up nearest underway/sensor context by timestamp
+    5. Updates associated row in observations or staging DB
+    6. Marks the image/job as processed (move or tag)
+
+- **Advantages:**
+    - True offline mode (everything in Docker Compose/local network)
+    - Handles real-time and batch workflows elegantly
+    - Separation of “data entry/UI” and “heavy post-processing” for resilience and speed
+    - Modular and simple to update/extend without full-stack rebuild
+
+---
+
+*This design enables fully offline, reliable, and modern marine field data workflows. It leverages Supabase’s strengths for API/auth/storage while preserving extensibility, automation, and performance at sea.*
