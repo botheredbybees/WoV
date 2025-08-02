@@ -1,0 +1,4 @@
+observed_on, time_observed_at, scientific_name, common_name, latitude, longitude, description, image_url, id_please, tag_list, captive_cultivated, observation_fields
+2025-03-21, 17:13:00, Abatus philippii, buzz burr, -54.321, 152.8882, Observed from ice dome on deck., https://storage.wov/v25sumsea01/obs-123.jpg, true, voyage:V25SUMSEA01, false, sea_state=3;wind_speed=8;air_temp=-1.5
+2025-03-21, 09:45:00, Diacyclops mirnyi, --, -54.500, 153.001, Artifact noted from plankton tow., https://storage.wov/v25sumsea01/obs-124.jpg, true, voyage:V25SUMSEA01, false, net_depth=10;sample_duration=5min
+2025-03-22, 12:20:00, Acaena magellanica, buzzy burr, -54.481, 152.981, Found in sheltered rocky outcrop., https://storage.wov/v25sumsea01/obs-125.jpg, false, voyage:V25SUMSEA01, false, substrate=rocky;cover=30%
