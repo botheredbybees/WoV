@@ -70,7 +70,7 @@ The system is designed to support:
 
 ```bash
 git clone https://github.com/botheredbybees/WoV.git
-cd nuyina-wildlife-observation
+cd WoV
 ```
 
 2. Review planning docs in the /docs folder:
