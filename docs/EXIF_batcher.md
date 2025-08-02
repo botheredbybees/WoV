@@ -11,3 +11,13 @@ Resource friendliness:
 The batcher container only processes when new photos arrive (event or scheduled poll).
 
 All heavy EXIF logic and context-matching in Python, but with the same containerization as the rest of your stack.
+
+How Supabase Storage can call this
+In Supabase project settings > Storage > Webhooks, set:
+
+Event: File Created (OBJECT_CREATED)
+
+URL: http://wov-exif-batcher:5000/webhook/file-upload (internal Docker network)
+(If local: http://localhost:5000/webhook/file-upload, for test)
+
+Configure your batcher to expose port 5000.
