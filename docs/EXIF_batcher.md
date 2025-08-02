@@ -1,3 +1,12 @@
+How this works:
+User uploads a photo (via SvelteKit webapp) to the photo-uploads bucket in Supabase.
+
+Supabase Storage triggers webhook and POSTs event JSON to /webhook/file-upload.
+
+Flask app receives event, prints/logs info or pushes to a queue/db table.
+
+Batch EXIF/main worker (in another process or polling loop) later queries the real queue or DB, downloads image via Supabase Storage, extracts EXIF, matches to context/sensor data, and updates database.
+
 Trigger pattern:
 
 When a new image is uploaded to Supabase Storage (direct from UI or SvelteKit client), Supabase’s Storage Webhooks call an endpoint you expose (e.g., /batcher/notify).
