@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   auth:
     container_name: supabase-auth
@@ -12,6 +14,7 @@ services:
       - db
     ports:
       - "9999:9999"
+
   db:
     container_name: supabase-db
     image: supabase/postgres:15.8.1.060
@@ -25,7 +28,7 @@ services:
       - ./volumes/db/data:/var/lib/postgresql/data:Z
       - ./volumes/db/_supabase.sql:/docker-entrypoint-initdb.d/migrations/97-_supabase.sql:Z
       - ./volumes/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:Z
-      - ./volumes/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:Z
+      - ./volumes/db/pooler.sql:/docker-entrypoint-initdb.d/init-scripts/99-pooler.sql:Z
       - db-config:/etc/postgresql-custom
     healthcheck:
       test:
@@ -66,69 +69,16 @@ services:
         "max_connections=200"
       ]
 
-  rest:
-    container_name: supabase-rest
-    image: postgrest/postgrest:v12.2.12
+  kong:
+    container_name: supabase-kong
+    image: kong:2.8.1
     restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-      # analytics:  # You can uncomment if you have an analytics container
-      #   condition: service_healthy    
-    ports:
-      - "3003:3000"
-
-    environment:
-      PGRST_DB_URI: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}
-      PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS}
-      PGRST_DB_ANON_ROLE: anon
-      PGRST_JWT_SECRET: ${JWT_SECRET}
-      PGRST_DB_USE_LEGACY_GUCS: "false"
-      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
-      PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY}
-    command: ["postgrest"]
-
-  fastapi:
-    container_name: wov-fastapi
-    build: ./backend/fastapi
-    restart: unless-stopped
-    environment:
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_NAME: ${POSTGRES_DB}
-      DB_USER: ${POSTGRES_USER}
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
-    depends_on:
-      - db
     ports:
       - "8000:8000"
+      - "8443:8443"
     volumes:
-      - ./backend/fastapi:/app
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-
-  exif-batcher:
-    container_name: wov-exif-batcher
-    build:
-      context: ./backend/exif-batcher
-    restart: unless-stopped
+      - ./volumes/api/kong.yml:/home/kong/temp.yml:ro,z
     environment:
-      SUPABASE_URL: http://kong:8000
-      SUPABASE_KEY: ${SERVICE_ROLE_KEY}
-      SUPABASE_BUCKET: photo-uploads
-      POSTGRES_HOST: ${POSTGRES_HOST}
-      POSTGRES_PORT: ${POSTGRES_PORT}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: supabase_admin
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    depends_on:
-      - db
-      - storage
-    volumes:
-      - ./volumes/storage:/batcher/photos:z
-    # The batcher can poll or listen via webhook. For polling loop:
-    command: python /code/main.py
-
-
-volumes:
-  db-config:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
