@@ -136,6 +136,76 @@ Running at `http://localhost:8000`
 
 ---
 
+## 🧭 Setting Up the Frontend (SvelteKit)
+
+To run the field data entry interface, install and launch the SvelteKit frontend:
+
+### Prerequisites
+
+Install the following (in addition to Docker):
+
+- Node.js (v20+ recommended)  
+  https://nodejs.org/en/download  
+  Test with: `node -v`
+
+- npm or pnpm  
+  Test with: `npm -v`  
+  Supabase client + SvelteKit is installed via npm packages.
+
+---
+
+### 1. Install and Bootstrap the Frontend
+
+From the project root:
+
+cd frontend
+npm install # or: pnpm install
+
+
+This installs the app dependencies, including:
+
+- SvelteKit
+- Supabase JS client
+- UI libraries
+- Upload helpers
+
+---
+
+### 2. Configure Environment for Frontend
+
+Copy `.env.example` and adjust Supabase and site settings (see above)
+
+---
+
+### 3. Start the Frontend
+
+To run in development mode:
+
+npm run dev
+
+
+
+You should now be able to open the field data UI at:
+
+📍 http://localhost:5173
+
+---
+
+### 4. Testing Upload
+
+Log in via Supabase Auth, create a new observation, and try uploading a photo. It should appear in your Supabase bucket and trigger exif-batcher via webhook.
+
+---
+
+### Notes
+
+- This frontend is being developed incrementally. Not all features (offline sync, admin control, ML preview) may be available yet.
+- If you're building for iOS/Android field testing, instruct users to connect via local WiFi and the machine's IP rather than localhost.
+
+
+
+---
+
 ## Troubleshooting Tips
 
 - If you see warnings about missing environment variables, check your `.env` exists and contains all required variables.
