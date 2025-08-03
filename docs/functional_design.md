@@ -31,31 +31,27 @@
 
 ### 2. Technical Stack
 
-- **Frontend:** SvelteKit (or Vue, etc.)
-  - Connects directly to **Supabase REST API** endpoints (via PostgREST)
-  - Uses **Supabase Auth** (GoTrue) via Kong for seamless login/roles
-  - Handles most CRUD via auto-generated API
+- **Frontend:** SvelteKit
+  - Communicates directly with Supabase via REST API and Storage client
+  - Supports Supabase Auth (login, session, user metadata)
+  - Allows offline-first UX with local queuing planned
+  - Touch UI = suitable for ship touchscreen, tablet, or laptop interface
 
-- **Supabase Core Services:**
-  - **supabase-db:** Local PostgreSQL data with full schema
-  - **supabase-kong:** API gateway for REST, Storage, and Auth
-  - **supabase-rest:** PostgREST for auto CRUD/view endpoints
-  - **supabase-auth:** GoTrue Auth (Sign-up, login, roles/JWT)
-  - **supabase-storage:** Native file/photo upload and management (with webhook support)
-  - **supabase-imgproxy:** Fast, compatible image resizing and preview
+- **Backend:** Supabase ecosystem (GoTrue, Storage, PostgREST, Kong)
+  - Handles DB, Auth, API, and Storage — no conventional backend server required
+  - FastAPI service is optional for custom analytics, ML, or integration logic
 
-- **Docker Python `exif-batcher` service:**
-  - Receives photo-upload events via webhook (from Supabase Storage through Kong)
-  - Downloads images from Supabase Storage bucket
-  - Extracts EXIF data (timestamp, GPS) and finds nearest matching sensor/environmental data (from underway table or API)
-  - Updates relevant observations in DB (direct or via REST API)
-  - Moves/marks files as processed after completion
+- **Database:** Supabase PostgreSQL stack (via Docker)
 
-- **(Optional:) FastAPI (or other backend)**:
-  - Can be included for advanced custom logic but not required for normal CRUD and file workflows
+- **Image and EXIF Context Workflow:**
+  - Photos uploaded via frontend
+  - Processed by exif-batcher (Docker service)
+  - Linked to observations via structured filenames and metadata
 
-- **Offline/Resilience:** All components run in Docker Compose; supports full operation without internet while at sea.
-
+- **Optional Add-ons:**
+  - Local ML/AI image inference
+  - InfluxDB sensor-linking and context matchers
+  - Export UI for iNaturalist, ALA, eBird
 ---
 
 ### 3. User Roles
