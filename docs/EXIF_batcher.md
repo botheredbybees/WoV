@@ -1,32 +1,53 @@
-How this works:
-User uploads a photo (via SvelteKit webapp) to the photo-uploads bucket in Supabase.
+📸 EXIF/Context Batcher Design
+This document details the design and workflow of the exif-batcher service, which automates the extraction of EXIF metadata from uploaded images and integrates it with observational and sensor data.
 
-Supabase Storage triggers webhook and POSTs event JSON to /webhook/file-upload.
+How it Works: Trigger Pattern
+The exif-batcher operates on an event-driven model, triggered by new image uploads to Supabase Storage. This ensures near real-time processing of observation photos.
 
-Flask app receives event, prints/logs info or pushes to a queue/db table.
+User Uploads Photo: A user uploads a photo via the SvelteKit web application to a designated bucket in Supabase Storage (e.g., photo-uploads).
 
-Batch EXIF/main worker (in another process or polling loop) later queries the real queue or DB, downloads image via Supabase Storage, extracts EXIF, matches to context/sensor data, and updates database.
+Supabase Storage Webhook: Supabase Storage is configured to trigger a webhook (OBJECT_CREATED event) when a new file is created.
 
-Trigger pattern:
+Webhook Routing (via Kong): The webhook POSTs an event JSON payload to a specific endpoint exposed by your exif-batcher service. This routing is handled by the Kong API Gateway, which directs the internal Docker network traffic.
 
-When a new image is uploaded to Supabase Storage (direct from UI or SvelteKit client), Supabase’s Storage Webhooks call an endpoint you expose (e.g., /batcher/notify).
+exif-batcher Receives Event: The exif-batcher (a Python application, likely Flask or FastAPI) receives the webhook event.
 
-This endpoint (could be a minimal Flask or FastAPI app within your exif-batcher container) writes the file path or ID into a pending_exif_jobs table in PostgreSQL.
+Process and Annotate: The batcher then:
 
-The exif-batcher worker (polling or event-driven) picks up jobs from this table, downloads the images (using the Supabase Storage API), extracts EXIF (timestamp, GPS), and updates the relevant observation record. It also matches to underway sensor data if available.
+Downloads the newly uploaded image from Supabase Storage using the provided file path or ID.
 
-Resource friendliness:
+Extracts EXIF metadata (e.g., datetime_original, GPS coordinates, camera model).
 
-The batcher container only processes when new photos arrive (event or scheduled poll).
+Looks up the nearest matching underway sensor data (e.g., sea surface temperature, wind speed) by timestamp.
 
-All heavy EXIF logic and context-matching in Python, but with the same containerization as the rest of your stack.
+Updates and annotates the associated observation record in the PostgreSQL database (wov.wov_observations and wov.wov_images tables) with the extracted EXIF and sensor context.
 
-How Supabase Storage can call this
-In Supabase project settings > Storage > Webhooks, set:
+Records the processing status or flags the image for review if EXIF extraction or context matching fails.
 
-Event: File Created (OBJECT_CREATED)
+Resource Friendliness
+This event-driven architecture ensures efficient resource utilization:
 
-URL: http://wov-exif-batcher:5000/webhook/file-upload (internal Docker network)
-(If local: http://localhost:5000/webhook/file-upload, for test)
+The exif-batcher container only processes data when new photos arrive, avoiding constant polling or unnecessary resource consumption.
 
-Configure your batcher to expose port 5000.
+All heavy EXIF logic and context-matching are handled in Python within a dedicated container, maintaining separation of concerns and preventing performance bottlenecks in other services.
+
+The entire workflow operates within the local Docker network, ensuring true offline capabilities and high performance at sea.
+
+Configuration: How Supabase Storage Calls the Batcher
+To enable this webhook integration, you will configure Supabase Storage within your local Supabase Studio dashboard:
+
+Access Supabase Studio: Navigate to http://localhost:54323/project/default/storage/buckets.
+
+Select your bucket: Choose the bucket designated for photo uploads (e.g., photo-uploads).
+
+Configure Webhook: Go to the "Webhooks" settings for that bucket.
+
+Event: Select File Created (OBJECT_CREATED).
+
+URL: Set this to the internal Docker network address of your exif-batcher service. Assuming your exif-batcher container is named wov_exif-batcher and exposes port 5000 internally for its webhook endpoint (e.g., /webhook/file-upload), the URL would be:
+http://wov_exif-batcher:5000/webhook/file-upload
+(For local testing outside the Docker network, if needed, you might temporarily use http://localhost:5005/webhook/file-upload if your docker-compose.yaml maps 5005 to 5000 for the exif-batcher service).
+
+Secret: (Optional but recommended) Provide a shared secret to verify webhook authenticity. This secret should also be configured in your exif-batcher application.
+
+Batcher Port Exposure: Ensure your exif-batcher Docker service is configured to expose the necessary port (e.g., 5000) for the webhook listener. This is usually defined in your docker-compose.yaml (or docker-compose.override.yaml if you're using that pattern).
