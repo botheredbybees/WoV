@@ -1,64 +1,68 @@
 # docker-compose.yml
-# This file defines the complete local development environment for WoV,
-# including core Supabase services and custom backend services.
-# Place this file in your project's root directory.
-
-# The 'version' attribute is obsolete and has been removed to avoid warnings.
+# This file defines the core local development environment for WoV,
+# including essential Supabase services and your custom backend services.
+# Advanced services like analytics, vector, and supavisor are excluded for simplicity.
 
 services:
   # --- Core Supabase Services ---
 
   db:
     image: public.ecr.aws/supabase/postgres:17.4.1.068
-    container_name: supabase_db_WoV
+    container_name: wov_supabase-db
     restart: unless-stopped
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
     ports:
-      - "54322:5432" # Host:Container
+      - "54322:5432" # Host:Container - Connect to Postgres on host port 54322
     volumes:
-      - db-data:/var/lib/postgresql/data
-      - ./supabase/migrations:/docker-entrypoint-initdb.d/migrations # Mount migrations
+      - db-data:/var/lib/postgresql/data # Persist database data
+      - ./supabase/migrations:/docker-entrypoint-initdb.d/migrations # Mount your application migrations
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      interval: 60s
+      timeout: 60s
+      retries: 60
 
   kong:
-    # Changed Kong image version to a known available and stable one from Docker Hub
     image: kong:3.4.2
-    container_name: supabase_kong_WoV
+    container_name: wov_supabase-kong
     restart: unless-stopped
     environment:
-      KONG_DATABASE: "postgres"
-      KONG_PG_HOST: db
-      KONG_PG_USER: ${POSTGRES_USER}
-      KONG_PG_PASSWORD: ${POSTGRES_PASSWORD}
+      KONG_DATABASE: "off"  # Declarative mode only
+      KONG_DECLARATIVE_CONFIG: "/opt/kong/declarative/kong.yml"
       KONG_PROXY_LISTEN: "0.0.0.0:8000, 0.0.0.0:8443 ssl"
       KONG_ADMIN_LISTEN: "0.0.0.0:8001, 0.0.0.0:8444 ssl"
-      KONG_ADMIN_GUI_URL: "http://localhost:8002" # Not used by Supabase Studio directly, but good for debugging
       KONG_ANONYMOUS_REPORTS: "off"
-      KONG_DECLARATIVE_CONFIG: "/opt/kong/declarative/kong.yml"
     ports:
-      - "54321:8000" # Supabase API URL
+      - "8000:8000"
       - "8443:8443"
+      - "8001:8001"  
+
     volumes:
-      - ./supabase/kong:/opt/kong/declarative
+      - ./volumes/api/kong.yml:/opt/kong/declarative/kong.yml
     depends_on:
       db:
         condition: service_healthy
+    # healthcheck:
+    #   test: ["CMD", "nc", "-z", "localhost", "8025"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
+    # healthcheck:
+    #   disable: true
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8001/status || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 60s
+      timeout: 10s
+      retries: 10
 
-  gotrue:
+
+
+  auth:
     image: public.ecr.aws/supabase/gotrue:v2.177.0
-    container_name: supabase_auth_WoV
+    container_name: wov_supabase-auth
     restart: unless-stopped
     environment:
       GOTRUE_DB_DRIVER: "postgres"
@@ -67,12 +71,31 @@ services:
       GOTRUE_DB_PORT: "5432"
       GOTRUE_DB_USER: ${POSTGRES_USER}
       GOTRUE_DB_PASSWORD: ${POSTGRES_PASSWORD}
-      GOTRUE_SITE_URL: "http://localhost:3000" # Or your frontend URL
+      GOTRUE_SITE_URL: ${SITE_URL}
       GOTRUE_JWT_SECRET: ${JWT_SECRET}
-      GOTRUE_EXTERNAL_URL: "http://localhost:54321/auth/v1"
+      GOTRUE_EXTERNAL_URL: "http://kong:8000/auth/v1" # Points to Kong
       GOTRUE_MAILER_URL: "http://inbucket:8025" # For email testing
-      GOTRUE_DISABLE_SIGNUP: "false"
-      GOTRUE_URI_ALLOW_LIST: "http://localhost:3000,http://localhost:54321"
+      GOTRUE_DISABLE_SIGNUP: "${DISABLE_SIGNUP}"
+      GOTRUE_URI_ALLOW_LIST: "${SITE_URL},http://localhost:8000" # Allow redirects from Studio/Kong
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "${ENABLE_EMAIL_SIGNUP}"
+      GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: "${ENABLE_ANONYMOUS_USERS}"
+      GOTRUE_MAILER_AUTOCONFIRM: "${ENABLE_EMAIL_AUTOCONFIRM}"
+      GOTRUE_SMTP_ADMIN_EMAIL: "${SMTP_ADMIN_EMAIL}"
+      GOTRUE_SMTP_HOST: "${SMTP_HOST}"
+      GOTRUE_SMTP_PORT: "${SMTP_PORT}"
+      GOTRUE_SMTP_USER: "${SMTP_USER}"
+      GOTRUE_SMTP_PASS: "${SMTP_PASS}"
+      GOTRUE_SMTP_SENDER_NAME: "${SMTP_SENDER_NAME}"
+      GOTRUE_MAILER_URLPATHS_INVITE: "${MAILER_URLPATHS_INVITE}"
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: "${MAILER_URLPATHS_CONFIRMATION}"
+      GOTRUE_MAILER_URLPATHS_RECOVERY: "${MAILER_URLPATHS_RECOVERY}"
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: "${MAILER_URLPATHS_EMAIL_CHANGE}"
+      GOTRUE_EXTERNAL_PHONE_ENABLED: "${ENABLE_PHONE_SIGNUP}"
+      GOTRUE_SMS_AUTOCONFIRM: "${ENABLE_PHONE_AUTOCONFIRM}"
+      API_EXTERNAL_URL: http://localhost:9999
+      GOTRUE_DB_URL: postgres://postgres:${POSTGRES_PASSWORD}@db:5432/postgres
+      JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgres://postgres:postgres@db:5432/postgres
     depends_on:
       db:
         condition: service_healthy
@@ -86,7 +109,7 @@ services:
 
   storage:
     image: public.ecr.aws/supabase/storage-api:v1.26.0
-    container_name: supabase_storage_WoV
+    container_name: wov_supabase-storage
     restart: unless-stopped
     environment:
       POSTGRES_HOST: db
@@ -95,17 +118,26 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
       JWT_SECRET: ${JWT_SECRET}
+      PGRST_JWT_SECRET: ${PGRST_JWT_SECRET}
       FILE_SIZE_LIMIT: "1073741824" # 1GB
-      STORAGE_URL: "http://localhost:54321/storage/v1"
-      # IMPORTANT: For webhooks to reach exif-batcher, use its internal Docker network name
-      WEBHOOK_URL: "http://exif-batcher:5000/webhook/file-upload" # This is for Supabase Storage webhooks
-    ports:
-      - "5000:5000" # Internal port for storage
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      STORAGE_URL: "http://kong:8000/storage/v1" # Points to Kong
+      WEBHOOK_URL: "http://exif-batcher:5000/webhook/file-upload" # For exif-batcher webhooks
+      ENABLE_IMAGE_TRANSFORMATION: "true"
+      IMGPROXY_URL: http://image-proxy:5001 # Points to image-proxy service
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@db:5432/postgres
+      POSTGRES_DATABASE_URL: ${SUPABASE_DB_URL}
+      ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+    volumes:
+      - storage-data:/var/lib/storage # Persist storage data
     depends_on:
       db:
         condition: service_healthy
-      # Removed explicit dependency on exif-batcher to break the cycle.
-      # Storage will still attempt to send webhooks to exif-batcher when it's ready.
+      kong:
+        condition: service_started
+      image-proxy: # Depends on image-proxy for transformations
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:5000/status || exit 1"]
       interval: 10s
@@ -114,7 +146,7 @@ services:
 
   realtime:
     image: public.ecr.aws/supabase/realtime:v2.41.11
-    container_name: supabase_realtime_WoV
+    container_name: wov_supabase-realtime
     restart: unless-stopped
     environment:
       DB_HOST: db
@@ -123,6 +155,9 @@ services:
       DB_NAME: ${POSTGRES_DB}
       DB_PORT: 5432
       JWT_SECRET: ${JWT_SECRET}
+      PORT: 5434
+      RLIMIT_NOFILE: 1048576
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE} 
     ports:
       - "4000:4000"
     depends_on:
@@ -136,12 +171,12 @@ services:
 
   postgrest:
     image: public.ecr.aws/supabase/postgrest:v12.2.12
-    container_name: supabase_rest_WoV
+    container_name: wov_supabase-rest
     restart: unless-stopped
     environment:
       PGRST_DB_URI: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
-      PGRST_DB_SCHEMA: "public,wov" # Expose your wov schema
-      PGRST_DB_ANON_ROLE: "anon"
+      PGRST_DB_SCHEMA: ${PGRST_DB_SCHEMAS} # Uses schema from .env
+      PGRST_DB_ANON_ROLE: ${PGRST_DB_ANON_ROLE} # Uses anon role from .env
       PGRST_JWT_SECRET: ${JWT_SECRET}
     ports:
       - "3000:3000"
@@ -156,7 +191,7 @@ services:
 
   studio:
     image: public.ecr.aws/supabase/studio:2025.07.28-sha-578b707
-    container_name: supabase_studio_WoV
+    container_name: wov_supabase-studio
     restart: unless-stopped
     environment:
       SUPABASE_URL: "http://kong:8000" # Studio connects to Kong
@@ -168,9 +203,10 @@ services:
       PG_PASSWORD: ${POSTGRES_PASSWORD}
       PG_DATABASE: ${POSTGRES_DB}
       JWT_SECRET: ${JWT_SECRET}
-      # Other Studio specific envs if needed
+      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
     ports:
-      - "54323:3000"
+      - "54323:3000" # Access Studio on host port 54323
     depends_on:
       kong:
         condition: service_healthy
@@ -182,28 +218,39 @@ services:
       timeout: 5s
       retries: 5
 
+  # inbucket:
+  #   image: public.ecr.aws/supabase/mailpit:v1.22.3
+  #   container_name: wov_supabase-inbucket
+  #   restart: unless-stopped
+  #   ports:
+  #     - "54324:8025" # Web UI for Inbucket
+  #     - "1025:1025" # SMTP port for Inbucket
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "curl -f http://localhost:8025/ || exit 1"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
   inbucket:
-    image: public.ecr.aws/supabase/mailpit:v1.22.3
-    container_name: supabase_inbucket_WoV
-    restart: unless-stopped
-    ports:
-      - "54324:8025" # Web UI
-      - "1025:1025" # SMTP
+    image: alpine
+    command: ["sh", "-c", "while true; do sleep 30; done"]
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8025/ || exit 1"]
+      test: ["CMD", "echo", "healthy"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 2s
+      retries: 3
+
+
 
   edge-runtime:
     image: public.ecr.aws/supabase/edge-runtime:v1.68.3
-    container_name: supabase_edge_runtime_WoV
+    container_name: wov_supabase-edge-functions
     restart: unless-stopped
     environment:
       SUPABASE_URL: "http://kong:8000"
       SUPABASE_ANON_KEY: ${ANON_KEY}
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       JWT_SECRET: ${JWT_SECRET}
+      VERIFY_JWT: "false" # Set to false for easier local development
     ports:
       - "8081:8081"
     depends_on:
@@ -215,37 +262,56 @@ services:
       timeout: 5s
       retries: 5
 
-  # Removed supabase_vector and supabase_analytics for simplicity and stability,
-  # as they were not essential for core functionality and were causing issues.
-  # You can re-add them later if needed and stable.
-
   # --- Custom Backend Services ---
 
+  # fastapi:
+  #   build:
+  #     context: ./backend/fastapi # Relative to this docker-compose.yml
+  #     dockerfile: Dockerfile
+  #   container_name: wov_fastapi
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8004:8003" # Host:Container - Your preferred host port for FastAPI
+  #   environment:
+      # DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      # SUPABASE_URL: http://kong:8000
+      # SUPABASE_ANON_KEY: ${ANON_KEY}
+      # SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      # DB_HOST: db
+      # DB_PORT: 5432
+      # DB_NAME: ${POSTGRES_DB}
+      # DB_USER: ${POSTGRES_USER}
+      # DB_PASSWORD: ${POSTGRES_PASSWORD}
+      # JWT_SECRET: ${JWT_SECRET}
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #     kong:
+  #       condition: service_started
+  #   command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8003", "--reload"]
   fastapi:
     build:
-      context: ./backend/fastapi # Relative to this docker-compose.yml
+      context: ./backend/fastapi
       dockerfile: Dockerfile
     container_name: wov_fastapi
     restart: unless-stopped
     ports:
-      - "8004:8003" # Host:Container - Your preferred host port
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-      SUPABASE_URL: http://kong:8000
-      SUPABASE_ANON_KEY: ${ANON_KEY}
-      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY} # Corrected variable name
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_NAME: ${POSTGRES_DB}
-      DB_USER: ${POSTGRES_USER}
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
-      JWT_SECRET: ${JWT_SECRET}
+      - "8004:8003"
+    env_file:
+      - .env
+    volumes:
+      - ./backend/fastapi/uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
-      kong:
-        condition: service_started
-    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8003", "--reload"]
+    command:
+      - uvicorn
+      - main:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8003"
+      - --reload
 
   exif-batcher:
     build:
@@ -268,7 +334,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      storage: # exif-batcher explicitly depends on storage
+      storage:
         condition: service_healthy
       kong:
         condition: service_started
@@ -287,10 +353,12 @@ services:
       SUPABASE_ANON_KEY: ${ANON_KEY}
       IMGPROXY_BIND: ":5001"
       IMGPROXY_LOCAL_FILESYSTEM_ROOT: / # Assuming it accesses files from root of container
-    depends_on:
-      storage:
-        condition: service_healthy
+    # depends_on:
+    #   storage:
+    #     condition: service_healthy
 
 volumes:
   db-data:
-  storage-data:
+  storage-data: # For Supabase Storage persistent datanetworks:
+  supabase-network:
+    driver: bridge
