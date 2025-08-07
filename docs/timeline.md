@@ -54,7 +54,7 @@ eBird checklists [docs/export-templates/eBird_checklist_template.csv]
 [ ] First field-test export (manual or automated) for ALA/iNat trial upload.
 
 Sprint 4: Web UI Form Prototypes — 2025-09-29 → 2025-10-10
-[ ] Minimal SvelteKit frontend enables:
+[x] Minimal SvelteKit frontend enables: -- (in branch feature/sprint-4-frontend, ready for testing)
 
 Log new observation (species, count, notes, photos)
 
@@ -62,9 +62,11 @@ Choose voyage and user
 
 Preview map and list of all observations
 
-[ ] Basic mobile-first UI layout scaffold
+[x] Basic mobile-first UI layout scaffold -- (in branch feature/sprint-4-frontend, ready for testing)
 
-[ ] Image upload + Supabase Storage proof-of-concept
+[x] Image upload + Supabase Storage proof-of-concept -- (in branch feature/sprint-4-frontend, ready for testing)
+
+[x] Administration pages for editing users, observations, images, and voyage data. -- (in branch feature/sprint-4-frontend, ready for testing)
 
 Sprint 5: Enrichment & Validation — 2025-10-13 → 2025-10-24
 [ ] Offline observation creation and sync (PWA shell or explicit local queue)

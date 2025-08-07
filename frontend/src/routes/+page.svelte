@@ -1,9 +1,3 @@
-<script>
-	import Navbar from '$lib/components/Navbar.svelte';
-</script>
-
-<Navbar />
-
 <main>
 	<h1>Welcome to the Nuyina Wildlife Observation System (WoV)</h1>
 

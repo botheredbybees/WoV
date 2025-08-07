@@ -158,3 +158,104 @@ async def create_observation(observation: Observation):
         ))
         new_id = cursor.fetchone()[0]
         return {"observation_id": new_id}
+
+@app.get("/users")
+async def get_users():
+    with get_db_cursor() as cursor:
+        cursor.execute("SELECT * FROM wov.wov_users")
+        users = cursor.fetchall()
+        columns = [desc[0] for desc in cursor.description]
+        return [dict(zip(columns, row)) for row in users]
+
+@app.get("/users/{user_id}")
+async def get_user(user_id: uuid.UUID):
+    with get_db_cursor() as cursor:
+        cursor.execute("SELECT * FROM wov.wov_users WHERE user_id = %s", (user_id,))
+        user = cursor.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        columns = [desc[0] for desc in cursor.description]
+        return dict(zip(columns, user))
+
+@app.put("/users/{user_id}")
+async def update_user(user_id: uuid.UUID, user: dict):
+    with get_db_cursor(commit=True) as cursor:
+        query = "UPDATE wov.wov_users SET "
+        query += ", ".join([f"{key} = %s" for key in user.keys()])
+        query += " WHERE user_id = %s"
+
+        values = list(user.values())
+        values.append(user_id)
+
+        cursor.execute(query, tuple(values))
+        return {"message": "User updated successfully"}
+
+@app.get("/voyages/{voyage_id}")
+async def get_voyage(voyage_id: str):
+    with get_db_cursor() as cursor:
+        cursor.execute("SELECT * FROM wov.wov_voyages WHERE voyage_id = %s", (voyage_id,))
+        voyage = cursor.fetchone()
+        if not voyage:
+            raise HTTPException(status_code=404, detail="Voyage not found")
+        columns = [desc[0] for desc in cursor.description]
+        return dict(zip(columns, voyage))
+
+@app.put("/voyages/{voyage_id}")
+async def update_voyage(voyage_id: str, voyage: dict):
+    with get_db_cursor(commit=True) as cursor:
+        query = "UPDATE wov.wov_voyages SET "
+        query += ", ".join([f"{key} = %s" for key in voyage.keys()])
+        query += " WHERE voyage_id = %s"
+
+        values = list(voyage.values())
+        values.append(voyage_id)
+
+        cursor.execute(query, tuple(values))
+        return {"message": "Voyage updated successfully"}
+
+@app.get("/observations/{observation_id}")
+async def get_observation(observation_id: int):
+    with get_db_cursor() as cursor:
+        cursor.execute("SELECT * FROM wov.wov_observations WHERE observation_id = %s", (observation_id,))
+        observation = cursor.fetchone()
+        if not observation:
+            raise HTTPException(status_code=404, detail="Observation not found")
+        columns = [desc[0] for desc in cursor.description]
+        return dict(zip(columns, observation))
+
+@app.put("/observations/{observation_id}")
+async def update_observation(observation_id: int, observation: dict):
+    with get_db_cursor(commit=True) as cursor:
+        query = "UPDATE wov.wov_observations SET "
+        query += ", ".join([f"{key} = %s" for key in observation.keys()])
+        query += " WHERE observation_id = %s"
+
+        values = list(observation.values())
+        values.append(observation_id)
+
+        cursor.execute(query, tuple(values))
+        return {"message": "Observation updated successfully"}
+
+@app.get("/images")
+async def get_images():
+    with get_db_cursor() as cursor:
+        cursor.execute("SELECT * FROM wov.wov_images")
+        images = cursor.fetchall()
+        columns = [desc[0] for desc in cursor.description]
+        return [dict(zip(columns, row)) for row in images]
+
+@app.get("/images/{image_id}")
+async def get_image(image_id: uuid.UUID):
+    with get_db_cursor() as cursor:
+        cursor.execute("SELECT * FROM wov.wov_images WHERE image_id = %s", (image_id,))
+        image = cursor.fetchone()
+        if not image:
+            raise HTTPException(status_code=404, detail="Image not found")
+        columns = [desc[0] for desc in cursor.description]
+        return dict(zip(columns, image))
+
+@app.delete("/images/{image_id}")
+async def delete_image(image_id: uuid.UUID):
+    with get_db_cursor(commit=True) as cursor:
+        cursor.execute("DELETE FROM wov.wov_images WHERE image_id = %s", (image_id,))
+        return {"message": "Image deleted successfully"}
