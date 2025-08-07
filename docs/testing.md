@@ -84,3 +84,19 @@ These tests require a running database.
     ```bash
     pytest backend/fastapi/tests/test_views.py
     ```
+
+## Frontend Tests
+
+The frontend tests are located in the `frontend/tests` directory. They are written using `vitest` and `@testing-library/svelte`.
+
+**How to run the tests:**
+
+1.  Make sure you have the dependencies installed. From the `frontend` directory, run:
+    ```bash
+    npm install
+    ```
+
+2.  Run the tests using `vitest`:
+    ```bash
+    npm test
+    ```
