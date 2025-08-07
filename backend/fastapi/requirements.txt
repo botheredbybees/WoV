@@ -1,10 +1,7 @@
-# fastapi==0.111.0 # Or your desired version
-# uvicorn[standard]==0.30.1 # Or your desired version
-# python-dotenv==1.0.1 # For loading .env variables
-# psycopg2-binary==2.9.9 # If connecting directly to PostgreSQL
 fastapi
 uvicorn[standard]
 python-multipart
 aiofiles
 python-dotenv==1.0.1
+psycopg2-binary
 

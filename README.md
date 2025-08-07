@@ -92,18 +92,18 @@ Docker Engine & Docker Compose: Follow the official Docker documentation for RHE
 
 Node.js & npm: Install via the NodeSource repository on RHEL.
 
-Supabase CLI: Install globally using npm.
+Supabase CLI: Install as a dev dependency using npm.
 
 Bash
 
-npm install -g supabase
+npm i supabase --save-dev
 Git: Install via sudo dnf install git.
 
 Initialize and start Supabase services: This command will start all the necessary Docker containers for your local Supabase stack and apply your database schema defined in supabase/migrations/.
 
 Bash
 
-supabase db reset
+npx supabase db reset
 Load Initial Data: Load the large SQL data files directly into the running PostgreSQL container using docker exec.
 
 Bash
@@ -116,6 +116,7 @@ docker exec -i <CONTAINER_NAME> psql -U postgres -d postgres < data/sql/01_wov_i
 docker exec -i <CONTAINER_NAME> psql -U postgres -d postgres < data/sql/02_wov_taxa.sql
 docker exec -i <CONTAINER_NAME> psql -U postgres -d postgres < data/sql/03_wov_inaturalist_observations.sql
 docker exec -i <CONTAINER_NAME> psql -U postgres -d postgres < data/sql/04_wov_dictionary.sql
+docker exec -i <CONTAINER_NAME> psql -U postgres -d postgres < data/sql/05_seed_data.sql
 Verify Setup: Check that Supabase Studio is accessible at http://localhost:54323 and that your tables and data are present in the wov schema.
 
 📄 Documentation Index
