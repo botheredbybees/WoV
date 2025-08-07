@@ -357,6 +357,20 @@ services:
     #   storage:
     #     condition: service_healthy
 
+  inaturalist-fetcher:
+    build:
+      context: ./backend/inaturalist-fetcher
+      dockerfile: Dockerfile
+    container_name: wov_inaturalist-fetcher
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
+
 volumes:
   db-data:
   storage-data: # For Supabase Storage persistent datanetworks:
