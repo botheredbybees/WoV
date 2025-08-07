@@ -57,3 +57,30 @@ This file contains unit tests for the functions in `fetcher.py`. The tests use `
     ```bash
     pytest backend/inaturalist-fetcher/tests/
     ```
+
+### Database View Tests
+
+The tests for the database views are located in `backend/fastapi/tests`.
+
+**File:** `backend/fastapi/tests/test_views.py`
+
+This file contains unit tests for the database views that are used for exporting data. The tests work by inserting test data into the database, querying the view, and then asserting that the view returns the expected data.
+
+**Tests:**
+- `test_darwin_core_export_view`: Tests the `wov.darwin_core_export` view.
+- `test_inaturalist_csv_export_view`: Tests the `wov.inaturalist_csv_export` view.
+- `test_ebird_checklist_export_view`: Tests the `wov.ebird_checklist_export` view.
+
+**How to run the tests:**
+
+These tests require a running database.
+
+1.  Make sure you have the dependencies installed. From the root of the project, run:
+    ```bash
+    pip install -r backend/fastapi/requirements.txt
+    ```
+
+2.  Run the tests using `pytest`:
+    ```bash
+    pytest backend/fastapi/tests/test_views.py
+    ```

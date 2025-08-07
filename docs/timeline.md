@@ -41,7 +41,7 @@ Sprint 2: iNaturalist Image Integration & Basic Data Flow — 2025-09-01 → 202
 [ ] Populate seed/sample data: taxa, voyages, users, observations.
 
 Sprint 3: Export & Interop — 2025-09-15 → 2025-09-26
-[ ] Views/functions for:
+[x] Views/functions for: -- (in branch feature/sprint-3-export-features, ready for testing)
 
 Darwin Core (ALA) CSV [docs/export-templates/ALA_DarwinCore_template.csv]
 
@@ -49,7 +49,7 @@ iNaturalist CSV [docs/export-templates/iNaturalist_CSV_example.csv]
 
 eBird checklists [docs/export-templates/eBird_checklist_template.csv]
 
-[ ] Enable CSV/PostgREST view-based HTTP export endpoints.
+[x] Enable CSV/PostgREST view-based HTTP export endpoints. -- (in branch feature/sprint-3-export-features, ready for testing)
 
 [ ] First field-test export (manual or automated) for ALA/iNat trial upload.
 
