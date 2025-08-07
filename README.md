@@ -48,6 +48,7 @@ Image Viewer	HTML-based, zoomable image reference guide
 
 Export to Sheets
 📁 Repository Structure
+```
 /
 ├── README.md
 ├── docs/
@@ -73,6 +74,7 @@ Export to Sheets
 ├── data/
 │   └── sql/
 └── .gitignore
+```
 Note: The supabase/ directory and its contents are managed automatically by the Supabase CLI and should not be modified manually.
 
 📦 Getting Started
